@@ -15,7 +15,7 @@ async function run() {
     core.debug('run: calling getDiffs...')
     const diffs = await getDiffs()
 
-    core.debug(`run: Got ${diffs.length} diffs`)
+    core.debug(`run: Got ${JSON.stringify(diffs.length)} diffs`)
 
     const files = {}
     diffs.forEach(diff => {
@@ -23,7 +23,9 @@ async function run() {
       const { added, removed } = getLineNumbers(patch)
 
       const totalLines = added.length + removed.length
-      const debugMessage = `run: getLineNumbers got ${totalLines} of ${diff.changes} lines in ${diff.filename}`
+      const debugMessage = `run: getLineNumbers got ${totalLines} of ${JSON.stringify(
+        diff.changes
+      )} lines in ${JSON.stringify(diff.filename)}`
       if (totalLines === diff.changes) {
         core.debug(debugMessage)
       } else {
@@ -69,7 +71,7 @@ async function getDiffs() {
   core.startGroup('getDiffs: payload')
   core.debug(`getDiffs: payload=${JSON.stringify(payload, null, 2)}`)
   core.endGroup()
-  core.debug(`getDiffs: eventName=${eventName}`)
+  core.debug(`getDiffs: eventName=${JSON.stringify(eventName)}`)
 
   const {
     repository: {
@@ -80,10 +82,10 @@ async function getDiffs() {
     after: head
   } = payload
 
-  core.debug(`getDiffs: repo=${repo}`)
-  core.debug(`getDiffs: owner=${owner}`)
-  core.debug(`getDiffs: before=${before}`)
-  core.debug(`getDiffs: head=${head}`)
+  core.debug(`getDiffs: repo=${JSON.stringify(repo)}`)
+  core.debug(`getDiffs: owner=${JSON.stringify(owner)}`)
+  core.debug(`getDiffs: before=${JSON.stringify(before)}`)
+  core.debug(`getDiffs: head=${JSON.stringify(head)}`)
 
   let base
   if (eventName === 'pull_request') {
@@ -94,7 +96,7 @@ async function getDiffs() {
     throw new Error('The triggering event must be "push" or "pull_request"')
   }
 
-  core.debug(`getDiffs: base=${base}`)
+  core.debug(`getDiffs: base=${JSON.stringify(base)}`)
 
   // https://docs.github.com/en/rest/reference/repos#compare-two-commits
   const {
