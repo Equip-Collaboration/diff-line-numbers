@@ -11,17 +11,32 @@ const github = __nccwpck_require__(438)
 // Matches a patch chunk line and captures the chunk's numbers.
 // E.g.: Matches "@@ -27,7 +198,6 @@ ..." and captures 27, 7, 198 and 6
 const patchChunkRegexp = /^@@ -(\d+),(\d+) \+(\d+),(\d+) @@/
-console.log('github keys', Object.keys(github))
-console.log('core keys', Object.keys(core))
+
 run()
 
 async function run() {
+  // https://github.com/actions/toolkit/blob/main/docs/action-debugging.md#how-to-access-step-debug-logs
+  core.debug('run: Starting...')
+
   try {
+    core.debug('run: calling getDiffs...')
     const diffs = await getDiffs()
+
+    core.debug(`run: Got ${diffs.length} diffs`)
+
     const files = {}
     diffs.forEach(diff => {
       const { patch, status } = diff
       const { added, removed } = getLineNumbers(patch)
+
+      const totalLines = added.length + removed.length
+      const debugMessage = `run: getLineNumbers got ${totalLines} of ${diff.changes} lines in ${diff.filename}`
+      if (totalLines === diff.changes) {
+        core.debug(debugMessage)
+      } else {
+        core.warning(debugMessage)
+      }
+
       files[diff.filename] = {
         added,
         removed,
@@ -29,8 +44,13 @@ async function run() {
       }
     })
     core.setOutput('files', files)
+
+    core.startGroup('run: Set outputs.files')
+    core.debug(`run: files=${JSON.stringify(files, null, 2)}`)
+    core.endGroup()
   } catch (error) {
-    console.log(error.stack)
+    core.error(error)
+
     core.setFailed(error.message)
   }
 }
@@ -44,8 +64,20 @@ async function run() {
  */
 async function getDiffs() {
   const githubToken = core.getInput('githubToken')
+
+  core.debug(`getDiffs: githubToken.length=${githubToken.length}`)
+
   const octokit = github.getOctokit(githubToken)
+
+  core.debug(`getDiffs: Got octokit`)
+
   const { payload, eventName } = github.context
+
+  core.startGroup('getDiffs: payload')
+  core.debug(`getDiffs: payload=${JSON.stringify(payload, null, 2)}`)
+  core.endGroup()
+  core.debug(`getDiffs: eventName=${eventName}`)
+
   const {
     repository: {
       name: repo,
@@ -54,6 +86,12 @@ async function getDiffs() {
     before,
     after: head
   } = payload
+
+  core.debug(`getDiffs: repo=${repo}`)
+  core.debug(`getDiffs: owner=${owner}`)
+  core.debug(`getDiffs: before=${before}`)
+  core.debug(`getDiffs: head=${head}`)
+
   let base
   if (eventName === 'pull_request') {
     base = payload.pull_request.base
@@ -63,9 +101,11 @@ async function getDiffs() {
     throw new Error('The triggering event must be "push" or "pull_request"')
   }
 
+  core.debug(`getDiffs: base=${base}`)
+
   // https://docs.github.com/en/rest/reference/repos#compare-two-commits
   const {
-    data: { files }
+    data: { diffs }
   } = await octokit.repos.compareCommits({
     owner,
     repo,
@@ -76,7 +116,11 @@ async function getDiffs() {
     }
   })
 
-  return files
+  core.startGroup('getDiffs: diffs')
+  core.debug(`getDiffs: diffs=${JSON.stringify(diffs, null, 2)}`)
+  core.endGroup()
+
+  return diffs
 }
 
 /**
