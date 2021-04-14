@@ -107,7 +107,7 @@ async function getDiffs() {
 
   // https://docs.github.com/en/rest/reference/repos#compare-two-commits
   const {
-    data: { diffs }
+    data: { files: diffs }
   } = await octokit.repos.compareCommits({
     owner,
     repo,
