@@ -42,4 +42,4 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Print outputs of diff
-        run: echo outputs = ${{ toJSON(steps.diff.outputs) }}
+        run: echo outputs = '${{ toJSON(steps.diff.outputs) }}'
