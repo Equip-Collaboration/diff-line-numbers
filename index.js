@@ -22,7 +22,7 @@ async function run() {
     })
     core.setOutput('files', files)
   } catch (error) {
-    core.setFailed(error.message)
+    core.setFailed(JSON.toString(error))
   }
 }
 
