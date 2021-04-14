@@ -1,13 +1,12 @@
-name: 'Wait'
-description: 'Wait a designated number of milliseconds'
+name: 'Diff line numbers'
+description: 'This action outputs the status and the line number of the changed lines of the changed files'
 inputs:
-  milliseconds:  # id of input
-    description: 'number of milliseconds to wait'
+  githubToken:  # ${{ secrets.GITHUB_TOKEN }}
+    description: 'The GitHub token used by the workflow'
     required: true
-    default: '1000'
 outputs:
-  time: # output will be available to future steps
-    description: 'The message to output'
+  files:
+    description: "Object with file paths as keys. Each value is { added: number[], removed: number[], status: string }"
 runs:
   using: 'node12'
   main: 'dist/index.js'

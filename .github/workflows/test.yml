@@ -1,4 +1,4 @@
-name: "units-test"
+name: "Test this action on this action"
 on:
   pull_request:
   push:
@@ -7,19 +7,21 @@ on:
       - 'releases/*'
 
 jobs:
-  # unit tests
+  # ESLint
   units:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - run: npm ci
-    - run: npm test
-
-  # test action works running from the graph
+    - run: npm run lint
+  # test action
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: ./
-      with:
-        milliseconds: 1000
+      - uses: actions/checkout@v2
+      - uses: ./
+        id: diff
+        with:
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+      - name: Print outputs of diff
+        run: echo outputs = ${{ toJSON(steps.diff.outputs) }}
