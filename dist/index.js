@@ -11,7 +11,8 @@ const github = __nccwpck_require__(438)
 // Matches a patch chunk line and captures the chunk's numbers.
 // E.g.: Matches "@@ -27,7 +198,6 @@ ..." and captures 27, 7, 198 and 6
 const patchChunkRegexp = /^@@ -(\d+),(\d+) \+(\d+),(\d+) @@/
-
+console.log('github keys', Object.keys(github))
+console.log('core keys', Object.keys(core))
 run()
 
 async function run() {
