@@ -128,7 +128,8 @@ function getLineNumbers(patch) {
   const removed = []
   const added = []
 
-  const patchLines = patch.split('\n')
+  // patch can be undefined if the diff is too large
+  const patchLines = patch ? patch.split('\n') : []
   for (let i = 0, l = patchLines.length; i < l; i++) {
     const match = patchLines[i].match(patchChunkRegexp)
     if (match) {
