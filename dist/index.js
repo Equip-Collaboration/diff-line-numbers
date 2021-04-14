@@ -29,7 +29,8 @@ async function run() {
     })
     core.setOutput('files', files)
   } catch (error) {
-    core.setFailed(JSON.toString(error))
+    console.log(error.stack)
+    core.setFailed(error.message)
   }
 }
 
