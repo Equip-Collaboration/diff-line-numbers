@@ -119,7 +119,7 @@ async function getDiffs() {
 }
 
 /**
- * Get the line numbers (removed and added) from the patch's chunks
+ * Get the line numbers (removed and added) from the patch
  *
  * @param {string} patch The diff's patch
  * @returns {object} { added: number[], removed: number[] }
@@ -130,16 +130,19 @@ function getLineNumbers(patch) {
 
   // patch can be undefined if the diff is too large
   const patchLines = patch ? patch.split('\n') : []
-  for (let i = 0, l = patchLines.length; i < l; i++) {
-    const match = patchLines[i].match(patchChunkRegexp)
-    if (match) {
-      const [, remStart, remNumber, addStart, addNumber] = match
-      for (let j = 0; j < remNumber; j++) {
-        removed.push(remStart + j)
-      }
-      for (let j = 0; j < addNumber; j++) {
-        added.push(addStart + j)
-      }
+  for (let i = 0, l = patchLines.length, before, after; i < l; i++) {
+    const line = patchLines[i]
+    if (line.startsWith(' ')) {
+      before++
+      after++
+    } else if (line.startsWith('+')) {
+      added.push(after++)
+    } else if (line.startsWith('-')) {
+      removed.push(before++)
+    } else {
+      const match = line.match(patchChunkRegexp)
+      before = Number.parseInt(match[1])
+      after = Number.parseInt(match[3])
     }
   }
 
