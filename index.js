@@ -1,5 +1,6 @@
 const core = require('@actions/core')
 const github = require('@actions/github')
+const exec = require('@actions/exec')
 
 // Matches a patch chunk line and captures the chunk's numbers.
 // E.g.: Matches "@@ -27,7 +198,6 @@ ..." and captures 27, 7, 198 and 6
@@ -12,6 +13,10 @@ async function run() {
   core.debug('run: Starting...')
 
   try {
+    core.debug('run: Exec git fetch...')
+    await exec.exec('git', ['fetch', '--all'])
+    core.debug('run: Exec git fetch OK')
+
     core.debug('run: calling getDiffs...')
     const diffs = await getDiffs()
 
