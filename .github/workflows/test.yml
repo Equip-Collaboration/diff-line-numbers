@@ -36,7 +36,7 @@ jobs:
     steps:
       # - uses: actions/checkout@v2
 
-      - uses: ./
+      - uses: Equip-Collaboration/diff-line-numbers@realAction
         id: diff
         with:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
