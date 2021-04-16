@@ -21,7 +21,8 @@ async function run() {
 
   try {
     core.debug('run: Exec git fetch...')
-    await exec.exec('git', ['fetch', '--all'])
+    const { base } = getRefs()
+    await exec.exec('git', ['fetch', base])
     core.debug('run: Exec git fetch OK')
 
     core.debug('run: calling getDiffs...')
@@ -78,37 +79,10 @@ async function getDiffs() {
 
   core.debug(`getDiffs: Got octokit`)
 
-  const { payload, eventName } = github.context
-
-  core.startGroup('getDiffs: payload')
-  core.debug(`getDiffs: payload=${JSON.stringify(payload, null, 2)}`)
-  core.endGroup()
-  core.debug(`getDiffs: eventName=${JSON.stringify(eventName)}`)
-
-  const {
-    repository: {
-      name: repo,
-      owner: { login: owner }
-    },
-    before,
-    after: head
-  } = payload
-
-  core.debug(`getDiffs: repo=${JSON.stringify(repo)}`)
-  core.debug(`getDiffs: owner=${JSON.stringify(owner)}`)
-  core.debug(`getDiffs: before=${JSON.stringify(before)}`)
-  core.debug(`getDiffs: head=${JSON.stringify(head)}`)
-
-  let base
-  if (eventName === 'pull_request') {
-    base = payload.pull_request.base.ref
-  } else if (eventName === 'push') {
-    base = before
-  } else {
-    throw new Error('The triggering event must be "push" or "pull_request"')
-  }
-
-  core.debug(`getDiffs: base=${JSON.stringify(base)}`)
+  const { base, head, owner, repo } = getRefs()
+  core.debug(
+    `getDiffs: getRefs=${JSON.stringify({ base, head, owner, repo }, null, 2)}`
+  )
 
   // https://docs.github.com/en/rest/reference/repos#compare-two-commits
   const {
@@ -159,6 +133,47 @@ function getLineNumbers(patch) {
   }
 
   return { added, removed }
+}
+
+/**
+ * Gets the base and head refs from the github context
+ *
+ * @returns {object} { base, head, owner, repo }
+ */
+function getRefs() {
+  const { payload, eventName } = github.context
+
+  core.startGroup('getRefs: payload')
+  core.debug(`getRefs: payload=${JSON.stringify(payload, null, 2)}`)
+  core.endGroup()
+  core.debug(`getRefs: eventName=${JSON.stringify(eventName)}`)
+
+  const {
+    repository: {
+      name: repo,
+      owner: { login: owner }
+    },
+    before,
+    after: head
+  } = payload
+
+  core.debug(`getRefs: repo=${JSON.stringify(repo)}`)
+  core.debug(`getRefs: owner=${JSON.stringify(owner)}`)
+  core.debug(`getRefs: before=${JSON.stringify(before)}`)
+  core.debug(`getRefs: head=${JSON.stringify(head)}`)
+
+  let base
+  if (eventName === 'pull_request') {
+    base = payload.pull_request.base.ref
+  } else if (eventName === 'push') {
+    base = before
+  } else {
+    throw new Error('The triggering event must be "push" or "pull_request"')
+  }
+
+  core.debug(`getRefs: base=${JSON.stringify(base)}`)
+
+  return { base, head, owner, repo }
 }
 
 
