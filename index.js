@@ -14,8 +14,8 @@ async function run() {
 
   try {
     core.debug('run: Exec git fetch...')
-    const { base, repo } = getRefs()
-    await exec.exec('git', ['fetch', repo, base])
+    const { base } = getRefs()
+    await exec.exec('git', ['fetch', 'origin', base])
     core.debug('run: Exec git fetch OK')
 
     core.debug('run: calling getDiffs...')
