@@ -153,7 +153,8 @@ async function getPaths(base, head, include = [''], ignore = []) {
     '--name-only',
     `--diff-filter=ad`,
     `-w`,
-    `${base}`
+    `${base}`,
+    `--`
   ])
 
   core.debug(`getPaths: stdout=${stdout}`)
