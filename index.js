@@ -29,11 +29,16 @@ async function run() {
 
     core.debug(`run: ${base} fetched`)
 
-    const paths = await getPaths(include, ignore)
+    const paths = await getPaths(
+      base,
+      head,
+      JSON.parse(include),
+      JSON.parse(ignore)
+    )
 
     core.debug(`run: paths=${JSON.stringify(paths, null, 2)}`)
 
-    const diffs = await getDiffs(paths)
+    const diffs = await getDiffs(base, head, paths)
 
     core.startGroup('run: diffs')
     core.debug(`run: diffs=${JSON.stringify(diffs, null, 2)}`)
