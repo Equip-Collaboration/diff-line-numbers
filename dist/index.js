@@ -239,7 +239,7 @@ function getRefs() {
 
   let base
   if (eventName === 'pull_request') {
-    base = payload.pull_request.base.ref
+    base = payload.pull_request.base.sha
   } else if (eventName === 'push') {
     base = before
   } else {
