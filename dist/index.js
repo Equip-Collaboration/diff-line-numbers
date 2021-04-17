@@ -283,6 +283,8 @@ async function execAsync(command, args = [], options = {}) {
   } catch (e) {
     e.stderr = errArray.join('')
     e.stdout = outArray.join('')
+    core.error(`execAsync: stdout=${e.stdout}`)
+    core.error(`execAsync: stderr=${e.stderr}`)
     throw e
   }
 
