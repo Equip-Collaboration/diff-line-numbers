@@ -1,13 +1,17 @@
-name: 'Wait'
-description: 'Wait a designated number of milliseconds'
+name: 'Diff line numbers'
+description: 'Outputs the line number of the deleted/added lines of modified or added files.'
 inputs:
-  milliseconds:  # id of input
-    description: 'number of milliseconds to wait'
-    required: true
-    default: '1000'
+  include:
+    description: 'JSON array. Only process paths that match a regular expression in `include`. By default includes all.'
+    required: false
+    default: '[""]'
+  ignore:
+    description: 'JSON array. Do not process paths that match a regular expression in `ignore`. By default ignores none.'
+    required: false
+    default: '[]'
 outputs:
-  time: # output will be available to future steps
-    description: 'The message to output'
+  lineNumbers:
+    description: "{ path: string, added: number[], removed: number[] }[]"
 runs:
   using: 'node12'
   main: 'dist/index.js'
