@@ -1,12 +1,17 @@
 name: 'Diff line numbers'
-description: 'This action outputs the status and the line number of the changed lines of the changed files'
+description: 'Outputs the line number of the deleted/added lines of modified or added files.'
 inputs:
-  githubToken:  # ${{ secrets.GITHUB_TOKEN }}
-    description: 'The GitHub token used by the workflow'
-    required: true
+  include:
+    description: 'JSON array. Only process paths that match a regular expression in `include`. By default includes all.'
+    required: false
+    default: '[""]'
+  ignore:
+    description: 'JSON array. Do not process paths that match a regular expression in `ignore`. By default ignores none.'
+    required: false
+    default: '[]'
 outputs:
-  files:
-    description: "Object with file paths as keys. Each value is { added: number[], removed: number[], status: string }"
+  lineNumbers:
+    description: "{ path: string, added: number[], removed: number[] }[]"
 runs:
   using: 'node12'
   main: 'dist/index.js'

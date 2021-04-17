@@ -1,36 +1,39 @@
 # Diff line numbers javascript action
 
-This action outputs the status and the line number of the changed lines of the changed files.
+This action outputs the line number of the deleted/added lines of modified or added files.
 
-The line numbers are obtained by parsing the patch chunks of each file given by the [GitHub API](https://docs.github.com/en/rest/reference/repos#compare-two-commits)
+The line numbers are obtained by parsing the patch chunks of each file given by `git diff`
 
-Note: Maximum 250 commits per diff (be it from a push or PR)
+NOTE: Requires having used `actions/checkout@v2` in a previous step.
 
 ## Inputs
 
-### `githubToken`
+### `include`
 
-**Required** The GitHub token used to compare commits. Typically, `secrets.GITHUB_TOKEN` should be used.
+**Optional** JSON array. Only process paths that match a regular expression in `include`. By default includes all.
+
+### `ignore`
+
+**Optional** JSON array. Do not process paths that match a regular expression in `ignore`. By default ignores none.
 
 ## Outputs
 
-### `files`
+### `lineNumbers`
 
-An object with the files' diffs. It looks like:
+An array with the files' path, added lines and removed lines. It looks like:
 ```javascript
-{
-  'filePath1': {
+[
+  {
+    path: string,
     added: number[],
-    removed: number[],
-    status: string
+    removed: number[]
   },
   ...
-}
+]
 ```
-- `filePath1` is the file's path, e.g. `package.json` and `src/index.js`.
-- `added` is an array of numbers. Each one is the line number of an added line.
-- `removed` is an array of numbers. Each one is the line number of a removed line.
-- `status` is the file's status. Can be `modified`, `added`, `deleted` and [some others](https://git-scm.com/docs/git-diff#Documentation/git-diff.txt---diff-filterACDMRTUXB82308203).
+- `path` is the file's path, e.g. `package.json` and `src/index.js`.
+- `added` is an array of numbers. Each number is the line number of an added line.
+- `removed` is an array of numbers. Each number is the line number of a removed line.
 
 ## Example usage
 
@@ -45,7 +48,8 @@ jobs:
         id: diff
         uses: Equip-Collaboration/diff-line-numbers@v1
         with:
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-      - name: Print changed files
-        run: echo Files diff = ${{ toJSON(steps.diff.outputs.files) }}
+          include: '["\\.js$", "\\.jsx$"]'
+          ignore: '["^dist/", "^bin/", "^www/"]'
+      - name: Print line numbers of changed lines
+        run: echo Line numbers = ${{ toJSON(steps.diff.outputs.lineNumbers) }}
 ```

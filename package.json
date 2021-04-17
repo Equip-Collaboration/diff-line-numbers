@@ -1,7 +1,7 @@
 {
   "name": "diff-line-numbers",
   "version": "1.0.0",
-  "description": "This action outputs the status and the line number of the changed lines of the changed files.",
+  "description": "This action outputs the line number of the deleted/added lines of modified or added files.",
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",

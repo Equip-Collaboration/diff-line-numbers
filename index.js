@@ -1,104 +1,168 @@
 const core = require('@actions/core')
-const github = require('@actions/github')
 const exec = require('@actions/exec')
-
-// Matches a patch chunk line and captures the chunk's numbers.
-// E.g.: Matches "@@ -27,7 +198,6 @@ ..." and captures 27, 7, 198 and 6
-const patchChunkRegexp = /^@@ -(\d+),(\d+) \+(\d+),(\d+) @@/
+const github = require('@actions/github')
 
 run()
 
+/**
+ * Sets the variable lineNumbers in the action's output
+ */
 async function run() {
   // https://github.com/actions/toolkit/blob/main/docs/action-debugging.md#how-to-access-step-debug-logs
   core.debug('run: Starting...')
 
   try {
-    core.debug('run: Exec git fetch...')
-    const { base } = getRefs()
-    await exec.exec('git', ['fetch', 'origin', base])
-    core.debug('run: Exec git fetch OK')
+    const include = core.getInput('include')
+    const ignore = core.getInput('ignore')
 
-    core.debug('run: calling getDiffs...')
-    const diffs = await getDiffs()
+    core.debug(`run: include=${JSON.stringify(include, null, 2)}`)
+    core.debug(`run: ignore=${JSON.stringify(ignore, null, 2)}`)
 
-    core.debug(`run: Got ${JSON.stringify(diffs.length)} diffs`)
+    const { base, head } = getRefs()
 
-    const files = {}
-    diffs.forEach(diff => {
-      const { patch, status } = diff
-      const { added, removed } = getLineNumbers(patch)
+    core.debug(`run: base=${JSON.stringify(base, null, 2)}`)
+    core.debug(`run: head=${JSON.stringify(head, null, 2)}`)
 
-      const totalLines = added.length + removed.length
-      const debugMessage = `run: getLineNumbers got ${totalLines} of ${JSON.stringify(
-        diff.changes
-      )} lines in ${JSON.stringify(diff.filename)}`
-      if (totalLines === diff.changes) {
-        core.debug(debugMessage)
-      } else {
-        core.warning(debugMessage)
-      }
+    core.debug(`run: fetching ${base}...`)
 
-      files[diff.filename] = {
-        added,
-        removed,
-        status
-      }
-    })
-    core.setOutput('files', files)
+    await execAsync('git', ['fetch', 'origin', base])
 
-    core.startGroup('run: Set outputs.files')
-    core.debug(`run: files=${JSON.stringify(files, null, 2)}`)
+    core.debug(`run: ${base} fetched`)
+
+    const paths = await getPaths(include, ignore)
+
+    core.debug(`run: paths=${JSON.stringify(paths, null, 2)}`)
+
+    const diffs = await getDiffs(paths)
+
+    core.startGroup('run: diffs')
+    core.debug(`run: diffs=${JSON.stringify(diffs, null, 2)}`)
     core.endGroup()
+
+    const lineNumbers = diffs.map(diff => getLineNumbers(diff))
+
+    core.startGroup('run: lineNumbers')
+    core.debug(`run: lineNumbers=${JSON.stringify(lineNumbers, null, 2)}`)
+    core.endGroup()
+
+    const output = []
+    for (let i = 0; i < paths.length; i++) {
+      output.push({
+        path: paths[i],
+        added: lineNumbers[i].added,
+        removed: lineNumbers[i].removed
+      })
+    }
+
+    core.startGroup('run: output')
+    core.debug(`run: output=${JSON.stringify(output, null, 2)}`)
+    core.endGroup()
+
+    core.setOutput('lineNumbers', output)
   } catch (error) {
     core.error(error)
 
     core.setFailed(error.message)
   }
+  core.debug('run: Ended')
 }
 
 /**
- * Gets the diffs (one for each file) between the current commit and:
- * - The base branch of the pull request, or
- * - The commit before the push
+ * Gets the diffs (one for each file) between `base` and `head`
  *
- * @returns {object[]} File diffs
+ * @param {string} base The git ref to compare from
+ * @param {string} head The git ref to compare to
+ * @param {string[]} paths The paths of the files to compare
+ * @returns {string[]} Diff patches
  */
-async function getDiffs() {
-  const githubToken = core.getInput('githubToken')
+async function getDiffs(base, head, paths) {
+  core.startGroup('getDiffs')
 
-  core.debug(`getDiffs: githubToken.length=${githubToken.length}`)
+  const diffs = []
+  for (let i = 0; i < paths.length; i++) {
+    const path = paths[i]
 
-  const octokit = github.getOctokit(githubToken)
+    const { stdout } = await execAsync('git', [
+      'diff',
+      '-U0',
+      `--minimal`,
+      `--diff-filter=ad`,
+      `--inter-hunk-context=0`,
+      `-w`,
+      `${base}...${head}`,
+      path
+    ])
 
-  core.debug(`getDiffs: Got octokit`)
+    core.debug(`getDiffs: stdout=${stdout}`)
 
-  const { base, head, owner, repo } = getRefs()
-  core.debug(
-    `getDiffs: getRefs=${JSON.stringify({ base, head, owner, repo }, null, 2)}`
-  )
+    diffs.push(stdout)
+  }
 
-  // https://docs.github.com/en/rest/reference/repos#compare-two-commits
-  const {
-    data: { files: diffs }
-  } = await octokit.repos.compareCommits({
-    owner,
-    repo,
-    base,
-    head,
-    mediaType: {
-      format: 'json'
-    }
-  })
-
-  core.startGroup('getDiffs: diffs')
-  core.debug(`getDiffs: diffs=${JSON.stringify(diffs, null, 2)}`)
   core.endGroup()
 
   return diffs
 }
 
 /**
- * Get the line numbers (removed and added) from the patch
+ * Gets the path of added or modified (ignores whitespace) files between `base`
+ * and `head`.
+ *
+ * - Only return paths that match a regular expression in `include`. By default
+ * includes all.
+ * - Do not return paths that match a regular expression in `ignore`. By
+ * default ignores none.
+ *
+ * @param {string} base The git ref to compare from
+ * @param {string} head The git ref to compare to
+ * @param {string[]} include A list of regular expressions
+ * @param {string[]} ignore A list of regular expressions
+ * @returns {string[]} The paths
+ */
+async function getPaths(base, head, include = [''], ignore = []) {
+  const includeRegexps = include.map(re => new RegExp(re))
+
+  core.debug(
+    `getPaths: includeRegexps=${JSON.stringify(
+      includeRegexps.map(re => re.toString())
+    )}`
+  )
+
+  const ignoreRegexps = ignore.map(re => new RegExp(re))
+
+  core.debug(
+    `getPaths: ignoreRegexps=${JSON.stringify(
+      ignoreRegexps.map(re => re.toString())
+    )}`
+  )
+
+  const { stdout } = await execAsync('git', [
+    'diff',
+    '--name-only',
+    `--diff-filter=ad`,
+    `-w`,
+    `${base}...${head}`
+  ])
+
+  core.debug(`getPaths: stdout=${stdout}`)
+
+  return stdout
+    .split('\n')
+    .filter(
+      path =>
+        path &&
+        includeRegexps.some(re => re.test(path)) &&
+        !ignoreRegexps.some(re => re.test(path))
+    )
+}
+
+// Matches a patch chunk line and captures the chunk's numbers.
+// E.g.: Matches "@@ -27,7 +198,6 @@ ..." and captures 27, 7, 198 and 6
+// E.g.: Matches "@@ -27 +198,0 @@ ..." and captures 27, undefined, 198 and 0
+// Capture groups:             |-1-|    |-2-|     |-3-|    |-4-|
+const patchLinesRegexp = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/
+
+/**
+ * Gets the line numbers (removed and added) from the patch
  *
  * @param {string} patch The diff's patch
  * @returns {object} { added: number[], removed: number[] }
@@ -107,21 +171,21 @@ function getLineNumbers(patch) {
   const removed = []
   const added = []
 
-  // patch can be undefined if the diff is too large
   const patchLines = patch ? patch.split('\n') : []
-  for (let i = 0, l = patchLines.length, before, after; i < l; i++) {
-    const line = patchLines[i]
-    if (line.startsWith(' ')) {
-      before++
-      after++
-    } else if (line.startsWith('+')) {
-      added.push(after++)
-    } else if (line.startsWith('-')) {
-      removed.push(before++)
-    } else {
-      const match = line.match(patchChunkRegexp)
-      before = Number.parseInt(match[1])
-      after = Number.parseInt(match[3])
+  for (let i = 0; i < patchLines.length; i++) {
+    const match = patchLines[i].match(patchLinesRegexp)
+    if (match) {
+      const remStart = Number.parseInt(match[1])
+      const remNumber = match[2] ? Number.parseInt(match[2]) : 1
+      const addStart = Number.parseInt(match[3])
+      const addNumber = match[4] ? Number.parseInt(match[4]) : 1
+
+      for (let j = 0; j < remNumber; j++) {
+        removed.push(remStart + j)
+      }
+      for (let j = 0; j < addNumber; j++) {
+        added.push(addStart + j)
+      }
     }
   }
 
@@ -129,7 +193,11 @@ function getLineNumbers(patch) {
 }
 
 /**
- * Gets the base and head refs from the github context
+ * Gets the base and head refs from the github context.
+ *
+ * The base ref will be:
+ * - The base branch of the pull request, or
+ * - The commit before the push
  *
  * @returns {object} { base, head, owner, repo }
  */
@@ -167,4 +235,49 @@ function getRefs() {
   core.debug(`getRefs: base=${JSON.stringify(base)}`)
 
   return { base, head, owner, repo }
+}
+
+/**
+ * Executes a shell command and resolves to the output
+ * once the command finishes.
+ *
+ * By default, rejects if there is data on stderr or if the exit code is not zero.
+ * See more options at
+ * <https://github.com/actions/toolkit/blob/main/packages/exec/src/interfaces.ts>
+ *
+ * @param {string} command
+ * @param {string[]} args
+ * @param {object} options
+ * @returns {object} { stdout: string, stderr: string, code: number }
+ */
+async function execAsync(command, args = [], options = {}) {
+  const errArray = []
+  const outArray = []
+  let code = -1
+
+  core.debug(`execAsync: command=${command}`)
+  core.debug(`execAsync: args=${JSON.stringify(args, null, 2)}`)
+  core.debug(`execAsync: (input) options=${JSON.stringify(options, null, 2)}`)
+
+  options = {
+    failOnStdErr: true,
+    silent: true,
+    ...options,
+    listeners: {
+      ...(options.listeners ? options.listeners : {}),
+      // Use stdout instead of stdline https://github.com/actions/toolkit/issues/749
+      stdout: data => outArray.push(data),
+      stderr: data => errArray.push(data)
+    }
+  }
+
+  try {
+    code = await exec.exec(command, args, options)
+  } catch (e) {
+    e.stderr = errArray.join('')
+    e.stdout = outArray.join('')
+    throw e
+  }
+
+  return { stdout: outArray.join(''), stderr: errArray.join(''), code }
 }

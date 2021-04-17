@@ -31,7 +31,7 @@ jobs:
       - run: npm run lint
 
   # test action
-  test:
+  testAction:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -39,7 +39,7 @@ jobs:
       - uses: ./
         id: diff
         with:
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Print outputs of diff
-        run: echo outputs = '${{ toJSON(steps.diff.outputs) }}'
+          include: '["\\.js$", "\\.jsx$"]'
+          ignore: '["^dist/", "^bin/", "^www/"]'
+      - name: Print line numbers of changed lines
+        run: echo Line numbers = ${{ toJSON(steps.diff.outputs.lineNumbers) }}
