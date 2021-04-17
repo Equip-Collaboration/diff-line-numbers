@@ -25,7 +25,7 @@ async function run() {
 
     core.debug(`run: fetching ${base}...`)
 
-    await execAsync('git', ['fetch', 'origin', base])
+    await execAsync('git', ['fetch', 'origin', base], { failOnStdErr: false })
 
     core.debug(`run: ${base} fetched`)
 
