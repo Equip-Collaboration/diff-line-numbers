@@ -101,7 +101,8 @@ async function getDiffs(base, head, paths) {
       `--diff-filter=ad`,
       `--inter-hunk-context=0`,
       `-w`,
-      `${base}...${head}`,
+      `${base}`,
+      '--',
       path
     ])
 
@@ -152,7 +153,7 @@ async function getPaths(base, head, include = [''], ignore = []) {
     '--name-only',
     `--diff-filter=ad`,
     `-w`,
-    `${base}...${head}`
+    `${base}`
   ])
 
   core.debug(`getPaths: stdout=${stdout}`)
