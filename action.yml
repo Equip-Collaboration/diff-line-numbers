@@ -13,5 +13,5 @@ outputs:
   lineNumbers:
     description: "{ path: string, added: number[], removed: number[] }[]"
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'dist/index.js'
