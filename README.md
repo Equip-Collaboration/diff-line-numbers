@@ -4,7 +4,7 @@ This action outputs the line number of the deleted/added lines of modified or ad
 
 The line numbers are obtained by parsing the patch chunks of each file given by `git diff`
 
-NOTE: Requires having used `actions/checkout@v2` in a previous step.
+NOTE: Requires having used `actions/checkout@v3` in a previous step.
 
 ## Inputs
 
